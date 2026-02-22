@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ballin Pro Scoreboard 🏀
 
-## Getting Started
+Ballin Pro is a broadcast-quality, zero-latency sports scoreboard application built specifically for LED walls, broadcast streams (OBS), and courtside displays. It features a complete mobile-responsive Control Panel and real-time synchronization across unlimited screens.
 
-First, run the development server:
+## 🚀 Features
 
+- **Zero-Latency Real-Time Sync**: Powered by a custom Socket.io Node.js backend. Changes on the Control Panel reflect on all displays instantly.
+- **Precision Delta Time Clocks**: The Game Clock and Shot Clock run on a true server-side Delta Time engine with smooth 60fps client-side interpolation, making them immune to browser tab sleeping and network lag.
+- **Persistent Database**: Integrated with Supabase. Never lose a score to a browser crash. State is saved automatically, and finished matches can be archived.
+- **Multiple Display Modes**: 
+  - `/display/scoreboard` (Main In-Game HUD)
+  - `/display/countdown` (Pre-game Countdown Ring)
+  - `/display/halftime` (Halftime Stats/Break)
+  - `/display/fulltime` (Final Score Summary)
+- **Mobile-Ready Control Panel**: The operator dashboard (`/control`) is built with responsive CSS grids, making it perfectly usable on courtside phones or iPads.
+- **Broadcast Ready**: Built with Next.js and Tailwind CSS. The UI scales fluidly using `vmin` units, guaranteeing perfect proportions whether viewed on a 1080p monitor or a massive arena LED matrix.
+
+## 🛠️ Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Styling**: Tailwind CSS
+- **Real-Time Engine**: Socket.io (Client & Server)
+- **Database**: Supabase (PostgreSQL)
+- **Icons**: Lucide React
+- **Language**: TypeScript
+
+## ⚙️ Local Development Setup
+
+### 1. Install Dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure Environment Variables
+Create a `.env.local` file in the root of the project and add your Supabase connection keys:
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Run the Development Server
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The application will be available at:
+- **Landing Page**: `http://localhost:3000`
+- **Control Panel**: `http://localhost:3000/control`
+- **Main Scoreboard**: `http://localhost:3000/display/scoreboard`
 
-## Learn More
+## 🌍 Production Deployment
 
-To learn more about Next.js, take a look at the following resources:
+Because this application utilizes persistent Websockets (Socket.io) for the real-time engine, it is highly recommended to deploy this to a platform that supports long-running Node.js processes, such as:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Render.com** (Recommended)
+- **Railway.app**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+*(Note: "Serverless" platforms like Vercel or Netlify may drop the Socket.io connection if the function goes idle.)*
 
-## Deploy on Vercel
+**Build & Start Commands (configured for production):**
+```bash
+npm run build
+npm run start
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📝 Usage
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Connect to the Network**: Ensure the laptop/server running the app is connected to the arena network.
+2. **Open the Displays**: Open the display URLs (e.g., `/display/scoreboard`) on the machines connected to your LED walls or within your broadcast software as Browser Sources.
+3. **Control the Game**: The operator can navigate to the `/control` URL on any tablet or smartphone connected to the same network to manage the game in real time.
