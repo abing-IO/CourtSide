@@ -53,8 +53,8 @@ export default function CountdownDisplay() {
     }, [state.countdownTarget]);
 
     // Display Fallbacks for Names/Colors
-    const homeName = state.countdownHomeName || state.homeName || 'HOME';
-    const awayName = state.countdownAwayName || state.awayName || 'AWAY';
+    const homeName = state.nextMatchHome || state.countdownHomeName || state.homeName || 'HOME';
+    const awayName = state.nextMatchAway || state.countdownAwayName || state.awayName || 'AWAY';
     const homeColor = state.countdownHomeColor || state.homeColor || '#3b82f6';
     const awayColor = state.countdownAwayColor || state.awayColor || '#ef4444';
 
@@ -151,7 +151,7 @@ export default function CountdownDisplay() {
                             STARTS IN
                         </div>
 
-                        <div className="relative w-[50vmin] h-[50vmin] flex justify-center items-center">
+                        <div className="relative w-[35vmin] h-[35vmin] flex justify-center items-center">
                             {showRing && (
                                 <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-[0_0_2vmin_rgba(251,191,36,0.3)]" viewBox="0 0 40 40">
                                     <circle cx="20" cy="20" r="18" fill="none" className="stroke-[color:var(--text-dim)] stroke-[1.5] opacity-20" />
@@ -164,17 +164,39 @@ export default function CountdownDisplay() {
                                 </svg>
                             )}
 
-                            <div key={remaining} className={cn("font-display tabular-nums leading-none z-10 transition-colors drop-shadow-[0_0_3vmin_rgba(255,255,255,0.2)] animate-tick", remaining <= 10 ? "text-[#ef4444] text-[22vmin]" : "text-[color:var(--text-primary)] text-[18vmin]")}>
+                            <div key={remaining} className={cn("font-display tabular-nums leading-none z-10 transition-colors drop-shadow-[0_0_3vmin_rgba(255,255,255,0.2)] animate-tick", remaining <= 10 ? "text-[#ef4444] text-[15vmin]" : "text-[color:var(--text-primary)] text-[12vmin]")}>
                                 {remaining <= 10 ? remaining : formatTime(remaining)}
                             </div>
                         </div>
 
-                        <div className="font-sans font-black text-[4vmin] tracking-[0.25em] text-[#fbbf24] uppercase mt-[2vmin] drop-shadow-[0_0_2vmin_rgba(251,191,36,0.4)]">
+                        <div className="font-sans font-black text-[3vmin] tracking-[0.25em] text-[#fbbf24] uppercase mt-[1vmin] drop-shadow-[0_0_2vmin_rgba(251,191,36,0.4)]">
                             {getSubText()}
                         </div>
                     </>
                 )}
 
+                {/* Schedule Loop */}
+                {state.schedule && state.schedule.length > 0 && (
+                    <div className="w-full max-w-[80vmin] mt-[4vmin] flex flex-col gap-[1.5vmin] animate-fade-in">
+                        <div className="font-extrabold text-[2.5vmin] tracking-[0.2em] text-[color:var(--text-dim)] uppercase text-center mb-[1vmin]">
+                            UPCOMING MATCHES
+                        </div>
+                        {state.schedule.map((match, idx) => (
+                            <div key={idx} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-[2vmin] p-[2vmin] px-[4vmin] backdrop-blur-sm shadow-xl">
+                                <div className="flex-1 text-right font-display text-[3.5vmin] tracking-wider truncate px-[2vmin]" style={{ color: match.homeColor || '#fff' }}>
+                                    {match.homeName}
+                                </div>
+                                <div className="shrink-0 flex flex-col items-center justify-center px-[3vmin] border-x border-white/10">
+                                    <span className="text-[1.5vmin] text-[color:var(--text-dim)] mb-[0.5vmin]">SCHEDULED</span>
+                                    <span className="font-display text-[2.5vmin] text-[#fbbf24]">{match.time}</span>
+                                </div>
+                                <div className="flex-1 text-left font-display text-[3.5vmin] tracking-wider truncate px-[2vmin]" style={{ color: match.awayColor || '#fff' }}>
+                                    {match.awayName}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
         </div>

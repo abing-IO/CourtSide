@@ -17,8 +17,23 @@ export function ClockCard() {
     const displayMins = Math.floor(clockSeconds / 60);
     const displaySecs = clockSeconds % 60;
 
-    const toggleGameClock = () => updateState({ clockRunning: !state.clockRunning });
-    const toggleShotClock = () => updateState({ shotClockRunning: !state.shotClockRunning });
+    const toggleGameClock = () => {
+        const isNowRunning = !state.clockRunning;
+        updateState({
+            clockRunning: isNowRunning,
+            // If starting the game clock, also start the shot clock (if enabled)
+            ...(isNowRunning && state.showShotClock && { shotClockRunning: true })
+        });
+    };
+
+    const toggleShotClock = () => {
+        const isNowRunning = !state.shotClockRunning;
+        updateState({
+            shotClockRunning: isNowRunning,
+            // If starting the shot clock, also start the main game clock (if enabled)
+            ...(isNowRunning && state.showGameClock && { clockRunning: true })
+        });
+    };
 
     // Quick Sets
     const setGameClock = (mins: number) => {

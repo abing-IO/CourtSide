@@ -67,7 +67,7 @@ export const defaultState: GameState = {
     schedule: [],
 
     showGameClock: false,
-    clockSeconds: 720, // 12 mins
+    clockSeconds: 600, // 10 mins (FIBA standard)
     clockRunning: false,
     showShotClock: false,
     shotClockSeconds: 24,

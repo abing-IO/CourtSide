@@ -7,6 +7,9 @@ Courtside Pro is a broadcast-quality, zero-latency sports scoreboard application
 - **Zero-Latency Real-Time Sync**: Powered by a custom Socket.io Node.js backend. Changes on the Control Panel reflect on all displays instantly.
 - **Precision Delta Time Clocks**: The Game Clock and Shot Clock run on a true server-side Delta Time engine with smooth 60fps client-side interpolation, making them immune to browser tab sleeping and network lag.
 - **Persistent Database**: Integrated with Supabase. Never lose a score to a browser crash. State is saved automatically, and finished matches can be archived.
+- **Broadcast-Grade Security**: 
+  - **Native Basic Auth**: The `/control` panel is completely locked down behind a user-defined passcode.
+  - **WebSocket Protection**: The Socket.io connection requires token authentication to accept state changes, preventing unauthorized scripts from hijacking the score.
 - **Multiple Display Modes**: 
   - `/display/scoreboard` (Main In-Game HUD)
   - `/display/countdown` (Pre-game Countdown Ring)
@@ -32,8 +35,12 @@ npm install
 ```
 
 ### 2. Configure Environment Variables
-Create a `.env.local` file in the root of the project and add your Supabase connection keys:
+Create a `.env.local` file in the root of the project and add your Supabase connection keys, as well as an admin passcode to secure the app:
 ```env
+# Optional: Secures the /control panel with a Basic Auth prompt
+ADMIN_PASSCODE=your_super_secret_password
+
+# Optional: Cloud Database Connection
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
