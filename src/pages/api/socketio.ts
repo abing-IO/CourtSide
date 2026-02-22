@@ -67,6 +67,24 @@ export default async function SocketHandler(req: NextApiRequest, res: NextApiRes
 
       // Handle state updates from control panel
       socket.on('update-state', (partialState: Partial<GameState>) => {
+        // Stamp the update time whenever clock start/stop states change
+        if (
+          partialState.clockRunning !== undefined ||
+          partialState.clockSeconds !== undefined
+        ) {
+          partialState.clockUpdateAt = Date.now();
+        }
+
+        if (
+          partialState.shotClockRunning !== undefined ||
+          partialState.shotClockSeconds !== undefined
+        ) {
+          partialState.shotClockUpdateAt = Date.now();
+        }
+
+        // Always stamp the current server time for sync purposes
+        partialState.serverTime = Date.now();
+
         // Merge the new state
         globalGameState = { ...globalGameState, ...partialState };
 
@@ -77,62 +95,6 @@ export default async function SocketHandler(req: NextApiRequest, res: NextApiRes
         saveStateToSupabase(globalGameState);
       });
     });
-
-    // Precise Clock Ticker (Runs every 100ms to calculate exact delta time)
-    let lastTickTime = Date.now();
-    let gameClockAccumulator = 0;
-    let shotClockAccumulator = 0;
-
-    setInterval(() => {
-      const now = Date.now();
-      const dt = now - lastTickTime;
-      lastTickTime = now;
-
-      let changed = false;
-
-      // Handle Game Clock
-      if (globalGameState.clockRunning && globalGameState.clockSeconds > 0) {
-        gameClockAccumulator += dt;
-        if (gameClockAccumulator >= 1000) {
-          const ticks = Math.floor(gameClockAccumulator / 1000);
-          gameClockAccumulator -= ticks * 1000;
-          globalGameState.clockSeconds -= ticks;
-          changed = true;
-
-          if (globalGameState.clockSeconds <= 0) {
-            globalGameState.clockSeconds = 0;
-            globalGameState.clockRunning = false;
-            gameClockAccumulator = 0;
-          }
-        }
-      } else {
-        gameClockAccumulator = 0;
-      }
-
-      // Handle Shot Clock
-      if (globalGameState.shotClockRunning && globalGameState.shotClockSeconds > 0) {
-        shotClockAccumulator += dt;
-        if (shotClockAccumulator >= 1000) {
-          const ticks = Math.floor(shotClockAccumulator / 1000);
-          shotClockAccumulator -= ticks * 1000;
-          globalGameState.shotClockSeconds -= ticks;
-          changed = true;
-
-          if (globalGameState.shotClockSeconds <= 0) {
-            globalGameState.shotClockSeconds = 0;
-            globalGameState.shotClockRunning = false;
-            shotClockAccumulator = 0;
-          }
-        }
-      } else {
-        shotClockAccumulator = 0;
-      }
-
-      // Broadcast if any clock ticked
-      if (changed) {
-        io.emit('state-update', globalGameState);
-      }
-    }, 100);
 
     // @ts-expect-error - Storing io instance on the response socket server
     res.socket.server.io = io;

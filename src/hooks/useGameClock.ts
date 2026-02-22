@@ -1,43 +1,36 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { GameState } from '@/lib/state';
 
 export function useGameClock(state: GameState) {
     const [clockSeconds, setClockSeconds] = useState(state.clockSeconds);
     const [shotClockSeconds, setShotClockSeconds] = useState(state.shotClockSeconds);
 
-    // Keep track of the server state continuously
     useEffect(() => {
-        setClockSeconds(state.clockSeconds);
-        setShotClockSeconds(state.shotClockSeconds);
-
-        if (!state.clockRunning && !state.shotClockRunning) return;
+        // Calculate the difference between our local machine time and the server's actual time
+        // This ensures the client side calculations are perfectly synced even if the client's system clock is wrong
+        const timeDelta = Date.now() - state.serverTime;
 
         let animationFrameId: number;
-        let lastTime = Date.now();
-        let gameAccumulator = 0;
-        let shotAccumulator = 0;
 
         const loop = () => {
             const now = Date.now();
-            const dt = now - lastTime;
-            lastTime = now;
+            const syncedNow = now - timeDelta;
 
             if (state.clockRunning) {
-                gameAccumulator += dt;
-                if (gameAccumulator >= 1000) {
-                    const ticks = Math.floor(gameAccumulator / 1000);
-                    gameAccumulator -= ticks * 1000;
-                    setClockSeconds(prev => Math.max(0, prev - ticks));
-                }
+                // How many actual milliseconds have passed since the server told us the clock started?
+                const elapsedSinceUpdate = syncedNow - state.clockUpdateAt;
+                const elapsedSeconds = Math.floor(elapsedSinceUpdate / 1000);
+                setClockSeconds(Math.max(0, state.clockSeconds - elapsedSeconds));
+            } else {
+                setClockSeconds(state.clockSeconds);
             }
 
             if (state.shotClockRunning) {
-                shotAccumulator += dt;
-                if (shotAccumulator >= 1000) {
-                    const ticks = Math.floor(shotAccumulator / 1000);
-                    shotAccumulator -= ticks * 1000;
-                    setShotClockSeconds(prev => Math.max(0, prev - ticks));
-                }
+                const elapsedSinceUpdate = syncedNow - state.shotClockUpdateAt;
+                const elapsedSeconds = Math.floor(elapsedSinceUpdate / 1000);
+                setShotClockSeconds(Math.max(0, state.shotClockSeconds - elapsedSeconds));
+            } else {
+                setShotClockSeconds(state.shotClockSeconds);
             }
 
             animationFrameId = requestAnimationFrame(loop);
@@ -46,7 +39,15 @@ export function useGameClock(state: GameState) {
         animationFrameId = requestAnimationFrame(loop);
 
         return () => cancelAnimationFrame(animationFrameId);
-    }, [state.clockSeconds, state.shotClockSeconds, state.clockRunning, state.shotClockRunning]);
+    }, [
+        state.clockSeconds,
+        state.shotClockSeconds,
+        state.clockRunning,
+        state.shotClockRunning,
+        state.clockUpdateAt,
+        state.shotClockUpdateAt,
+        state.serverTime
+    ]);
 
     return { clockSeconds, shotClockSeconds };
 }

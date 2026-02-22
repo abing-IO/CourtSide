@@ -36,6 +36,10 @@ export interface GameState {
     showShotClock: boolean;
     shotClockSeconds: number;
     shotClockRunning: boolean;
+
+    clockUpdateAt: number;
+    shotClockUpdateAt: number;
+    serverTime: number;
 }
 
 export const defaultState: GameState = {
@@ -68,4 +72,8 @@ export const defaultState: GameState = {
     showShotClock: false,
     shotClockSeconds: 24,
     shotClockRunning: false,
+
+    clockUpdateAt: Date.now(),
+    shotClockUpdateAt: Date.now(),
+    serverTime: Date.now(),
 };

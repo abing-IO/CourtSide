@@ -4,42 +4,64 @@ import { useEffect, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { GameState, defaultState } from '@/lib/state';
 
+// Global Singleton: Ensure only ONE socket connection exists for the entire browser tab
+let globalSocket: Socket | null = null;
+let globalStateCache: GameState = defaultState;
+let globalIsConnected = false;
+
+// Array of subscriber functions to update all components simultaneously
+const subscribers = new Set<(state: GameState, isConnected: boolean) => void>();
+
 export function useGameState() {
-    const [state, setState] = useState<GameState>(defaultState);
-    const [socket, setSocket] = useState<Socket | null>(null);
-    const [isConnected, setIsConnected] = useState(false);
+    const [state, setState] = useState<GameState>(globalStateCache);
+    const [isConnected, setIsConnected] = useState(globalIsConnected);
 
     useEffect(() => {
-        // Connect to the Socket.io server (running in API route)
-        const socketIo = io({
-            path: '/api/socketio'
-        });
+        // 1. Initialize the global socket ONLY ONCE per browser tab
+        if (!globalSocket) {
+            globalSocket = io({
+                path: '/api/socketio'
+            });
 
-        socketIo.on('connect', () => {
-            setIsConnected(true);
-            socketIo.emit('request-state'); // Request initial state on connect
-        });
+            globalSocket.on('connect', () => {
+                globalIsConnected = true;
+                globalSocket?.emit('request-state');
+                subscribers.forEach(notify => notify(globalStateCache, true));
+            });
 
-        socketIo.on('disconnect', () => {
-            setIsConnected(false);
-        });
+            globalSocket.on('disconnect', () => {
+                globalIsConnected = false;
+                subscribers.forEach(notify => notify(globalStateCache, false));
+            });
 
-        socketIo.on('state-update', (newState: GameState) => {
+            globalSocket.on('state-update', (newState: GameState) => {
+                globalStateCache = newState;
+                subscribers.forEach(notify => notify(newState, globalIsConnected));
+            });
+        }
+
+        // 2. Subscribe this specific React component to the global updates
+        const notify = (newState: GameState, connected: boolean) => {
             setState(newState);
-        });
+            setIsConnected(connected);
+        };
 
-        setSocket(socketIo);
+        subscribers.add(notify);
 
+        // Notify immediately if already connected
+        notify(globalStateCache, globalIsConnected);
+
+        // 3. Cleanup subscription when this specific component unmounts
         return () => {
-            socketIo.disconnect();
+            subscribers.delete(notify);
         };
     }, []);
 
     const updateState = useCallback((partialState: Partial<GameState>) => {
-        if (socket) {
-            socket.emit('update-state', partialState);
+        if (globalSocket) {
+            globalSocket.emit('update-state', partialState);
         }
-    }, [socket]);
+    }, []);
 
     return { state, updateState, isConnected };
 }
