@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGameState } from '@/hooks/useGameState';
 import { useGameClock } from '@/hooks/useGameClock';
 import { Card, CardTitle, Button, Label, Input } from '@/components/ui';
@@ -9,7 +9,30 @@ import { cn } from '@/lib/utils';
 
 export function ClockCard() {
     const { state, updateState } = useGameState();
-    const { clockSeconds, shotClockSeconds } = useGameClock(state);
+    const lastZeroTriggered = useRef(false);
+
+    // If the hook fires onZero, we must halt the server state
+    const { clockSeconds, shotClockSeconds, getLiveClocks } = useGameClock(state, (currentClock, currentShot) => {
+        if (!state.clockRunning && !state.shotClockRunning) return;
+        if (lastZeroTriggered.current) return;
+
+        lastZeroTriggered.current = true;
+        updateState({
+            clockRunning: false,
+            shotClockRunning: false,
+            // We must also permanently commit the remaining time back to the server,
+            // otherwise the server just falls back to the original cached time before we hit play.
+            ...(state.clockRunning && { clockSeconds: currentClock }),
+            ...(state.shotClockRunning && { shotClockSeconds: currentShot })
+        });
+    });
+
+    // Reset the trigger lock if manually started again
+    useEffect(() => {
+        if (state.clockRunning || state.shotClockRunning) {
+            lastZeroTriggered.current = false;
+        }
+    }, [state.clockRunning, state.shotClockRunning]);
     const [editMins, setEditMins] = useState('');
     const [editSecs, setEditSecs] = useState('');
 
@@ -19,19 +42,29 @@ export function ClockCard() {
 
     const toggleGameClock = () => {
         const isNowRunning = !state.clockRunning;
+        const live = getLiveClocks();
+
         updateState({
             clockRunning: isNowRunning,
-            // If starting the game clock, also start the shot clock (if enabled)
-            ...(isNowRunning && state.showShotClock && { shotClockRunning: true })
+            // Sync the shot clock to match (whether starting OR pausing)
+            ...(state.showShotClock && { shotClockRunning: isNowRunning }),
+            // If we are pausing, we must commit the incredibly precise current seconds to the server!
+            ...(!isNowRunning && { clockSeconds: live.c }),
+            ...(!isNowRunning && state.showShotClock && { shotClockSeconds: live.s })
         });
     };
 
     const toggleShotClock = () => {
         const isNowRunning = !state.shotClockRunning;
+        const live = getLiveClocks();
+
         updateState({
             shotClockRunning: isNowRunning,
-            // If starting the shot clock, also start the main game clock (if enabled)
-            ...(isNowRunning && state.showGameClock && { clockRunning: true })
+            // Sync the game clock to match (whether starting OR pausing)
+            ...(state.showGameClock && { clockRunning: isNowRunning }),
+            // If we are pausing, we must commit the incredibly precise current seconds to the server!
+            ...(!isNowRunning && { shotClockSeconds: live.s }),
+            ...(!isNowRunning && state.showGameClock && { clockSeconds: live.c })
         });
     };
 

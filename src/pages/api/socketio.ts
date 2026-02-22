@@ -62,12 +62,33 @@ export default async function SocketHandler(req: NextApiRequest, res: NextApiRes
     const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '';
 
     io.on('connection', (socket) => {
-      // Send the current state immediately when a client connects
-      socket.emit('state-update', globalGameState);
+      // Helper function to calculate current live state on the fly for late joiners
+      const getLiveState = () => {
+        const liveState = { ...globalGameState };
+        const now = Date.now();
+
+        if (liveState.clockRunning) {
+          const elapsed = Math.floor((now - liveState.clockUpdateAt) / 1000);
+          liveState.clockSeconds = Math.max(0, liveState.clockSeconds - elapsed);
+          liveState.clockUpdateAt = now; // Pretend it just started for this client
+        }
+
+        if (liveState.shotClockRunning) {
+          const elapsed = Math.floor((now - liveState.shotClockUpdateAt) / 1000);
+          liveState.shotClockSeconds = Math.max(0, liveState.shotClockSeconds - elapsed);
+          liveState.shotClockUpdateAt = now;
+        }
+
+        liveState.serverTime = now;
+        return liveState;
+      };
+
+      // Send the current live calculated state immediately when a client connects
+      socket.emit('state-update', getLiveState());
 
       // Handle raw state request
       socket.on('request-state', () => {
-        socket.emit('state-update', globalGameState);
+        socket.emit('state-update', getLiveState());
       });
 
       // Handle state updates from control panel (NOW SECURED)
