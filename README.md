@@ -1,6 +1,6 @@
-# Ballin Pro Scoreboard 🏀
+# Courtside Pro Scoreboard 🏀
 
-Ballin Pro is a broadcast-quality, zero-latency sports scoreboard application built specifically for LED walls, broadcast streams (OBS), and courtside displays. It features a complete mobile-responsive Control Panel and real-time synchronization across unlimited screens.
+Courtside Pro is a broadcast-quality, zero-latency sports scoreboard application built specifically for LED walls, broadcast streams (OBS), and courtside displays. It features a complete mobile-responsive Control Panel and real-time synchronization across unlimited screens.
 
 ## 🚀 Features
 
@@ -71,7 +71,7 @@ npm run start
 
 ## ⚖️ License
 
-Basketball Scoreboard - Copyright (c) 2025 Abin
+Courtside Pro Scoreboard - Copyright (c) 2025 Abin
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
