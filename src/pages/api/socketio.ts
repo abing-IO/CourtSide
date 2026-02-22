@@ -56,6 +56,11 @@ export default async function SocketHandler(req: NextApiRequest, res: NextApiRes
       addTrailingSlash: false,
     });
 
+    // Rate Limiting & Auth State
+    const rateLimits = new Map<string, number[]>();
+    const MAX_EVENTS_PER_SECOND = 10;
+    const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || '';
+
     io.on('connection', (socket) => {
       // Send the current state immediately when a client connects
       socket.emit('state-update', globalGameState);
@@ -65,8 +70,31 @@ export default async function SocketHandler(req: NextApiRequest, res: NextApiRes
         socket.emit('state-update', globalGameState);
       });
 
-      // Handle state updates from control panel
-      socket.on('update-state', (partialState: Partial<GameState>) => {
+      // Handle state updates from control panel (NOW SECURED)
+      socket.on('update-state', (payload: { state: Partial<GameState>, token?: string }) => {
+        // 1. Authentication Check
+        if (ADMIN_PASSCODE && payload.token !== ADMIN_PASSCODE) {
+          console.warn(`Blocked unauthorized state update from ${socket.id}`);
+          return;
+        }
+
+        // 2. Rate Limiting Check (DDoS Prevention)
+        const now = Date.now();
+        const clientHistory = rateLimits.get(socket.id) || [];
+        // Keep only events from the last 1000ms
+        const recentEvents = clientHistory.filter(time => now - time < 1000);
+
+        if (recentEvents.length >= MAX_EVENTS_PER_SECOND) {
+          console.warn(`Rate limit exceeded for ${socket.id}. Dropping update.`);
+          return;
+        }
+
+        // Record this event
+        recentEvents.push(now);
+        rateLimits.set(socket.id, recentEvents);
+
+        const partialState = payload.state;
+
         // Stamp the update time whenever clock start/stop states change
         if (
           partialState.clockRunning !== undefined ||
@@ -93,6 +121,11 @@ export default async function SocketHandler(req: NextApiRequest, res: NextApiRes
 
         // Fire-and-forget save to Database
         saveStateToSupabase(globalGameState);
+      });
+
+      // Cleanup rate limits on disconnect
+      socket.on('disconnect', () => {
+        rateLimits.delete(socket.id);
       });
     });
 

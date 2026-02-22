@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(req: NextRequest) {
+export default function proxy(req: NextRequest) {
     // Only apply authentication to the /control route
     if (req.nextUrl.pathname.startsWith('/control')) {
         const adminPasscode = process.env.ADMIN_PASSCODE;

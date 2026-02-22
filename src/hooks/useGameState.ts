@@ -12,7 +12,13 @@ let globalIsConnected = false;
 // Array of subscriber functions to update all components simultaneously
 const subscribers = new Set<(state: GameState, isConnected: boolean) => void>();
 
-export function useGameState() {
+let globalToken = '';
+
+export function useGameState(token?: string) {
+    if (token) {
+        globalToken = token;
+    }
+
     const [state, setState] = useState<GameState>(globalStateCache);
     const [isConnected, setIsConnected] = useState(globalIsConnected);
 
@@ -59,7 +65,7 @@ export function useGameState() {
 
     const updateState = useCallback((partialState: Partial<GameState>) => {
         if (globalSocket) {
-            globalSocket.emit('update-state', partialState);
+            globalSocket.emit('update-state', { state: partialState, token: globalToken });
         }
     }, []);
 
