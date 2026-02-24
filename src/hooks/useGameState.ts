@@ -26,7 +26,8 @@ export function useGameState(token?: string) {
         // 1. Initialize the global socket ONLY ONCE per browser tab
         if (!globalSocket) {
             globalSocket = io({
-                path: '/api/socketio'
+                path: '/api/socketio',
+                auth: { token: globalToken }  // Token sent on handshake for reconnect resilience
             });
 
             globalSocket.on('connect', () => {

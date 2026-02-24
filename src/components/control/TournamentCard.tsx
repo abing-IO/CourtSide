@@ -125,7 +125,7 @@ export function TournamentCard() {
                                         value={match.homeName}
                                         onChange={(e) => {
                                             const newSchedule = [...state.schedule];
-                                            newSchedule[idx].homeName = e.target.value;
+                                            newSchedule[idx] = { ...newSchedule[idx], homeName: e.target.value };
                                             updateState({ schedule: newSchedule });
                                         }}
                                     />
@@ -136,7 +136,7 @@ export function TournamentCard() {
                                         value={match.awayName}
                                         onChange={(e) => {
                                             const newSchedule = [...state.schedule];
-                                            newSchedule[idx].awayName = e.target.value;
+                                            newSchedule[idx] = { ...newSchedule[idx], awayName: e.target.value };
                                             updateState({ schedule: newSchedule });
                                         }}
                                     />
@@ -149,7 +149,7 @@ export function TournamentCard() {
                                         value={match.time}
                                         onChange={(e) => {
                                             const newSchedule = [...state.schedule];
-                                            newSchedule[idx].time = e.target.value;
+                                            newSchedule[idx] = { ...newSchedule[idx], time: e.target.value };
                                             updateState({ schedule: newSchedule });
                                         }}
                                     />

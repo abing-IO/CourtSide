@@ -35,14 +35,20 @@ export default function ScoreboardDisplay() {
         document.documentElement.style.setProperty('--glow-away', state.awayColor + '66');
     }, [state.displayTheme, state.homeColor, state.awayColor]);
 
+    // Use a key to force animation restart (incrementing triggers remount of inner content)
+    const [threeKey, setThreeKey] = useState(0);
+    const [threeTeam, setThreeTeam] = useState<'home' | 'away' | null>(null);
+    const [threeDiff, setThreeDiff] = useState(0);
+
     // Handle Score Animations
     useEffect(() => {
         if (state.homeScore !== prevHomeScore.current) {
             const diff = state.homeScore - prevHomeScore.current;
             if (diff === 3) {
                 setThreeOverlay(true);
-                setTimeout(() => setThreeOverlay(false), 1500);
-                setTimeout(() => triggerPop('home', diff), 1200);
+                setThreeKey(k => k + 1);
+                setThreeTeam('home');
+                setThreeDiff(diff);
             } else {
                 triggerPop('home', diff > 0 ? diff : null);
             }
@@ -53,14 +59,26 @@ export default function ScoreboardDisplay() {
             const diff = state.awayScore - prevAwayScore.current;
             if (diff === 3) {
                 setThreeOverlay(true);
-                setTimeout(() => setThreeOverlay(false), 1500);
-                setTimeout(() => triggerPop('away', diff), 1200);
+                setThreeKey(k => k + 1);
+                setThreeTeam('away');
+                setThreeDiff(diff);
             } else {
                 triggerPop('away', diff > 0 ? diff : null);
             }
             prevAwayScore.current = state.awayScore;
         }
     }, [state.homeScore, state.awayScore]);
+
+    // Called when the +3 overlay animation finishes naturally
+    const handleThreeAnimationEnd = (e: React.AnimationEvent) => {
+        // Only act on the overlay fade, ignore the text pop bubbling up
+        if (e.target !== e.currentTarget) return;
+        setThreeOverlay(false);
+        if (threeTeam) {
+            triggerPop(threeTeam, threeDiff);
+            setThreeTeam(null);
+        }
+    };
 
     const triggerPop = (team: 'home' | 'away', delta: number | null) => {
         if (team === 'home') {
@@ -88,15 +106,26 @@ export default function ScoreboardDisplay() {
 
     return (
         <div className="sb w-screen h-screen relative bg-sb-bg overflow-hidden flex flex-col justify-center items-center gap-[2.5vmin] p-[5vmin]">
-            {/* 3-Pointer Overlay */}
+            {/* 3-Pointer Overlay — always in DOM, visibility controlled by CSS */}
             <div
                 className={cn(
-                    "fixed inset-0 z-[100] flex items-center justify-center pointer-events-none transition-all duration-300",
-                    threeOverlay ? "opacity-100 visible" : "opacity-0 invisible"
+                    "fixed inset-0 z-[100] flex items-center justify-center pointer-events-none",
+                    threeOverlay ? "animate-threeOverlayFade" : "opacity-0 invisible"
                 )}
                 style={{ background: "radial-gradient(circle, rgba(251, 191, 36, 0.15) 0%, rgba(0, 0, 0, 0.85) 70%)" }}
+                onAnimationEnd={handleThreeAnimationEnd}
             >
-                <div className={cn("text-[#fbbf24] font-display text-[50vmin] drop-shadow-[0_0_15vmin_rgba(251,191,36,0.6)]", threeOverlay && "animate-threeTextPop")}>
+                <div
+                    key={threeKey}
+                    className={cn(
+                        "font-display text-[50vmin]",
+                        threeOverlay ? "animate-threeTextPop" : "opacity-0 scale-0"
+                    )}
+                    style={{
+                        color: '#fbbf24',
+                        textShadow: '0 0 5vmin rgba(251, 191, 36, 0.8), 0 0 15vmin rgba(251, 191, 36, 0.4), 0 0 30vmin rgba(251, 191, 36, 0.2)'
+                    }}
+                >
                     +3
                 </div>
             </div>
@@ -168,7 +197,7 @@ export default function ScoreboardDisplay() {
                         {state.homeScore}
                     </div>
                     {homeDelta && (
-                        <div className="absolute top-[-2vmin] left-1/2 -translate-x-1/2 font-display text-[8vmin] text-[#fbbf24] drop-shadow-[0_0_3vmin_rgba(251,191,36,0.6)] animate-scoreDeltaFloat z-20 pointer-events-none">
+                        <div className="absolute top-[-2vmin] left-0 w-full text-center font-display text-[8vmin] text-[#fbbf24] drop-shadow-[0_0_3vmin_rgba(251,191,36,0.6)] animate-scoreDeltaFloat z-20 pointer-events-none">
                             +{homeDelta}
                         </div>
                     )}
@@ -193,7 +222,7 @@ export default function ScoreboardDisplay() {
                         {state.awayScore}
                     </div>
                     {awayDelta && (
-                        <div className="absolute top-[-2vmin] left-1/2 -translate-x-1/2 font-display text-[8vmin] text-[#fbbf24] drop-shadow-[0_0_3vmin_rgba(251,191,36,0.6)] animate-scoreDeltaFloat z-20 pointer-events-none">
+                        <div className="absolute top-[-2vmin] left-0 w-full text-center font-display text-[8vmin] text-[#fbbf24] drop-shadow-[0_0_3vmin_rgba(251,191,36,0.6)] animate-scoreDeltaFloat z-20 pointer-events-none">
                             +{awayDelta}
                         </div>
                     )}

@@ -73,7 +73,7 @@ export const defaultState: GameState = {
     shotClockSeconds: 24,
     shotClockRunning: false,
 
-    clockUpdateAt: Date.now(),
-    shotClockUpdateAt: Date.now(),
-    serverTime: Date.now(),
+    clockUpdateAt: 0,
+    shotClockUpdateAt: 0,
+    serverTime: 0,
 };

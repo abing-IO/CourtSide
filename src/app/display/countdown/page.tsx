@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameState } from '@/hooks/useGameState';
 import { cn } from '@/lib/utils';
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useGameState } from '@/hooks/useGameState';
 import { useGameClock } from '@/hooks/useGameClock';
 import { Card, CardTitle, Button, Label, Input } from '@/components/ui';
-import { Play, Pause, Square, RotateCcw } from 'lucide-react';
+import { Play, Pause, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function ClockCard() {

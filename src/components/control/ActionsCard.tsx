@@ -38,8 +38,9 @@ export function ActionsCard() {
             const reader = new FileReader();
             reader.onload = (reEvent) => {
                 try {
-                    const loadedState = JSON.parse(reEvent.target?.result as string) as GameState;
-                    updateState(loadedState);
+                    const loadedState = JSON.parse(reEvent.target?.result as string);
+                    // Merge with defaults to ensure all required fields exist (handles old/partial files)
+                    updateState({ ...defaultState, ...loadedState });
                 } catch (error) {
                     alert('Invalid scoreboard state file');
                 }

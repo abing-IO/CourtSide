@@ -30,6 +30,7 @@ export function useGameClock(state: GameState, onZero?: (cSecs: number, sSecs: n
         const timeDelta = Date.now() - state.serverTime;
 
         let animationFrameId: number;
+        let hasZeroFired = false;  // Prevent double-fire within the same effect cycle
 
         const loop = () => {
             const now = Date.now();
@@ -60,7 +61,8 @@ export function useGameClock(state: GameState, onZero?: (cSecs: number, sSecs: n
                 setShotClockSeconds(state.shotClockSeconds);
             }
 
-            if (isZero && onZeroRef.current) {
+            if (isZero && !hasZeroFired && onZeroRef.current) {
+                hasZeroFired = true;  // Lock out further onZero calls until the effect restarts
                 onZeroRef.current(currentClock, currentShot);
                 return; // Stop the loop for this frame if we zeroed out
             }
@@ -81,21 +83,24 @@ export function useGameClock(state: GameState, onZero?: (cSecs: number, sSecs: n
         state.serverTime
     ]);
 
-    // Force an absolutely precise calculation of the current time on demand, completely bypassing any React closure/state lag
+    // Calculate the precise current clock values on demand
+    // NOTE: We use Date.now() directly here (not the timeDelta sync approach from the RAF loop).
+    // The timeDelta approach only works in the animation loop because timeDelta is captured ONCE
+    // and then `now` advances over frames. Here, both would be computed at the same instant,
+    // causing them to cancel out (syncedNow would always equal serverTime, giving elapsed = 0).
     const getLiveClocks = () => {
         const currentState = stateRef.current;
-        const timeDelta = Date.now() - currentState.serverTime;
-        const syncedNow = Date.now() - timeDelta;
+        const now = Date.now();
 
         let c = currentState.clockSeconds;
         if (currentState.clockRunning) {
-            const elapsed = Math.floor((syncedNow - currentState.clockUpdateAt) / 1000);
+            const elapsed = Math.floor((now - currentState.clockUpdateAt) / 1000);
             c = Math.max(0, currentState.clockSeconds - elapsed);
         }
 
         let s = currentState.shotClockSeconds;
         if (currentState.shotClockRunning) {
-            const elapsed = Math.floor((syncedNow - currentState.shotClockUpdateAt) / 1000);
+            const elapsed = Math.floor((now - currentState.shotClockUpdateAt) / 1000);
             s = Math.max(0, currentState.shotClockSeconds - elapsed);
         }
 

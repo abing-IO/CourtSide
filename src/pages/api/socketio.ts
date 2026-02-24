@@ -3,8 +3,7 @@ import { NextApiRequest } from 'next';
 import { Server as ServerIO } from 'socket.io';
 import { NextApiResponse } from 'next';
 import { defaultState, GameState } from '@/lib/state';
-
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export const config = {
   api: {
@@ -12,9 +11,13 @@ export const config = {
   },
 };
 
+// Server-side Supabase client — prefer service role key for full write access
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 // Global in-memory state (persists as long as the Next.js dev server runs)
 let globalGameState: GameState = { ...defaultState };
-let isStateLoaded = false;
 
 // Helper to save state to Supabase without blocking the Socket
 const saveStateToSupabase = async (state: GameState) => {
@@ -30,23 +33,20 @@ export default async function SocketHandler(req: NextApiRequest, res: NextApiRes
   if (!res.socket.server.io) {
     console.log('Starting Socket.io Server...');
 
-    // Load initial state from Database ONCE
-    if (!isStateLoaded) {
-      try {
-        const { data, error } = await supabase.from('game_state').select('state').eq('id', 1).single();
-        if (data?.state && Object.keys(data.state).length > 0) {
-          // Merge the DB state into default state to ensure all new properties exist
-          globalGameState = { ...defaultState, ...data.state };
-          console.log('Loaded GameState from Supabase.');
-        } else {
-          console.log('No existing GameState found, using defaults.');
-          // Initialize the DB row with defaults if it's empty
-          saveStateToSupabase(globalGameState);
-        }
-      } catch (err) {
-        console.error('Error fetching initial state:', err);
+    // Load initial state from Database ONCE (tied to io instance, safe across hot reloads)
+    try {
+      const { data, error } = await supabase.from('game_state').select('state').eq('id', 1).single();
+      if (data?.state && Object.keys(data.state).length > 0) {
+        // Merge the DB state into default state to ensure all new properties exist
+        globalGameState = { ...defaultState, ...data.state };
+        console.log('Loaded GameState from Supabase.');
+      } else {
+        console.log('No existing GameState found, using defaults.');
+        // Initialize the DB row with defaults if it's empty
+        saveStateToSupabase(globalGameState);
       }
-      isStateLoaded = true;
+    } catch (err) {
+      console.error('Error fetching initial state:', err);
     }
 
     // @ts-expect-error - Custom property assignment
@@ -93,8 +93,9 @@ export default async function SocketHandler(req: NextApiRequest, res: NextApiRes
 
       // Handle state updates from control panel (NOW SECURED)
       socket.on('update-state', (payload: { state: Partial<GameState>, token?: string }) => {
-        // 1. Authentication Check
-        if (ADMIN_PASSCODE && payload.token !== ADMIN_PASSCODE) {
+        // 1. Authentication Check (accept per-event token OR handshake auth token)
+        const eventToken = payload.token || (socket.handshake.auth as { token?: string })?.token;
+        if (ADMIN_PASSCODE && eventToken !== ADMIN_PASSCODE) {
           console.warn(`Blocked unauthorized state update from ${socket.id}`);
           return;
         }
@@ -116,18 +117,19 @@ export default async function SocketHandler(req: NextApiRequest, res: NextApiRes
 
         const partialState = payload.state;
 
-        // Stamp the update time whenever clock start/stop states change
-        if (
-          partialState.clockRunning !== undefined ||
-          partialState.clockSeconds !== undefined
-        ) {
+        // Stamp the update time ONLY when a clock STARTS running, or when seconds are manually set
+        // CRITICAL: Do NOT re-stamp on pause — the committed clockSeconds is the final value
+        if (partialState.clockRunning === true) {
+          // Clock is starting — stamp so clients can calculate elapsed time
+          partialState.clockUpdateAt = Date.now();
+        } else if (partialState.clockSeconds !== undefined && !('clockRunning' in partialState)) {
+          // Manual time edit (no running state change) — stamp for late joiners
           partialState.clockUpdateAt = Date.now();
         }
 
-        if (
-          partialState.shotClockRunning !== undefined ||
-          partialState.shotClockSeconds !== undefined
-        ) {
+        if (partialState.shotClockRunning === true) {
+          partialState.shotClockUpdateAt = Date.now();
+        } else if (partialState.shotClockSeconds !== undefined && !('shotClockRunning' in partialState)) {
           partialState.shotClockUpdateAt = Date.now();
         }
 

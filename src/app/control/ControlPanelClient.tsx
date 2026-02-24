@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useGameState } from '@/hooks/useGameState';
+import { useGameClock } from '@/hooks/useGameClock';
 import { ClockCard } from '@/components/control/ClockCard';
 import { ScoreCard } from '@/components/control/ScoreCard';
 import { QuarterPossessionCard } from '@/components/control/QuarterPossessionCard';
@@ -12,36 +13,48 @@ import { Activity } from 'lucide-react';
 
 export default function ControlPanelClient({ token }: { token: string }) {
     const { state, updateState, isConnected } = useGameState(token);
+    const { getLiveClocks } = useGameClock(state);
+
+    // Use refs for keyboard shortcuts to avoid stale closures
+    const stateRef = useRef(state);
+    useEffect(() => { stateRef.current = state; }, [state]);
 
     // Keyboard Shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+            const s = stateRef.current;
 
             switch (e.key) {
-                case 'q': updateState({ homeScore: Math.max(0, state.homeScore + 1) }); break;
-                case 'w': updateState({ homeScore: Math.max(0, state.homeScore + 2) }); break;
-                case 'e': updateState({ homeScore: Math.max(0, state.homeScore + 3) }); break;
-                case 'z': updateState({ homeScore: Math.max(0, state.homeScore - 1) }); break;
+                case 'q': updateState({ homeScore: Math.max(0, s.homeScore + 1) }); break;
+                case 'w': updateState({ homeScore: Math.max(0, s.homeScore + 2) }); break;
+                case 'e': updateState({ homeScore: Math.max(0, s.homeScore + 3) }); break;
+                case 'z': updateState({ homeScore: Math.max(0, s.homeScore - 1) }); break;
 
-                case 'p': updateState({ awayScore: Math.max(0, state.awayScore + 1) }); break;
-                case 'o': updateState({ awayScore: Math.max(0, state.awayScore + 2) }); break;
-                case 'i': updateState({ awayScore: Math.max(0, state.awayScore + 3) }); break;
-                case 'm': updateState({ awayScore: Math.max(0, state.awayScore - 1) }); break;
+                case 'p': updateState({ awayScore: Math.max(0, s.awayScore + 1) }); break;
+                case 'o': updateState({ awayScore: Math.max(0, s.awayScore + 2) }); break;
+                case 'i': updateState({ awayScore: Math.max(0, s.awayScore + 3) }); break;
+                case 'm': updateState({ awayScore: Math.max(0, s.awayScore - 1) }); break;
 
-                case ' ': // spacebar toggles both clocks
+                case ' ': { // spacebar toggles both clocks
                     e.preventDefault();
+                    const isNowRunning = !s.clockRunning;
+                    const live = getLiveClocks();
                     updateState({
-                        clockRunning: !state.clockRunning,
-                        shotClockRunning: !state.shotClockRunning
+                        clockRunning: isNowRunning,
+                        shotClockRunning: isNowRunning,
+                        // Commit current live seconds when PAUSING
+                        ...(!isNowRunning && { clockSeconds: live.c }),
+                        ...(!isNowRunning && { shotClockSeconds: live.s })
                     });
                     break;
+                }
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [state.homeScore, state.awayScore, state.clockRunning, state.shotClockRunning, updateState]);
+    }, [updateState, getLiveClocks]);
 
     return (
         <div className="min-h-screen bg-[#0a0a0f] text-white p-6 font-sans">
